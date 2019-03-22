@@ -1,3 +1,12 @@
+# Fork info
+
+Forked to add `--yaml` and `--move` options, and make CLI 
+installable (`@tln/turndown`).
+
+(Original README Follows)
+
+<hr>
+
 # Turndown
 
 [![Build Status](https://travis-ci.org/domchristie/turndown.svg?branch=master)](https://travis-ci.org/domchristie/turndown)
