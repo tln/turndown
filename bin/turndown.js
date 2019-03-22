@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 var fs = require('fs')
 var program = require('commander')
-var TurndownService = require('../')
+var TurndownService = require('../lib/turndown.cjs.js')
 
 program
   .version(require('../package.json').version)
   .usage('(<input> | --input <input>) [options]')
+  .option('-m --move', 'Remove input file, create .md output file')
+  .option('--yaml', 'Ignore YAML frontmatter')
   .option('-i, --input <input>', 'string of HTML or HTML file to convert')
   .option('-o, --output <file>', 'output file')
   .option('--bullet-list-marker <marker>', '"-", "+", or "*"')
@@ -21,7 +23,13 @@ program
 
 var stdin = ''
 if (process.stdin.isTTY) {
-  turndown(program.input || program.args[0])
+  if (program.move) {
+    if (!program.input) program.input = program.args[0]
+    console.log('Move!', program.input)
+    console.assert(program.input && program.input.endsWith('.html'))
+    program.output = program.input.replace(/\.html$/, '.md')
+  }
+  turndown(program.input || program.args[0], program.yaml)
 } else {
   process.stdin.on('readable', function () {
     var chunk = this.read()
@@ -32,13 +40,21 @@ if (process.stdin.isTTY) {
   })
 }
 
-function turndown (string) {
+function turndown (string, skipYaml) {
   var turndownService = new TurndownService(options())
 
   if (fs.existsSync(string)) {
     fs.readFile(string, 'utf8', function (error, contents) {
       if (error) throw error
-      output(turndownService.turndown(contents))
+      let prefix = '';
+      if (skipYaml) {
+        let match = /^---\n(.*\n)+?---\n/.exec(contents);
+        if (match) {
+          prefix = match[0];
+          contents = contents.substring(prefix.length);
+        }
+      }
+      output(prefix + turndownService.turndown(contents))
     })
   } else {
     output(turndownService.turndown(string))
@@ -50,6 +66,10 @@ function output (markdown) {
     fs.writeFile(program.output, markdown, 'utf8', function (error) {
       if (error) throw error
       console.log(program.output)
+      if (program.move) {
+        console.log('removing:', program.input)
+        fs.unlinkSync(program.input)
+      }
     })
   } else {
     console.log(markdown)
